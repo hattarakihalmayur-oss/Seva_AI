@@ -37,6 +37,7 @@ const OCCUPATIONS = [
 export default function RegisterPage() {
   const { register, loading } = useAuth();
   const { currentLangCode, t, tText } = useLanguage();
+  const navigate = useNavigate();
   const location = useLocation();
   const from = location.state?.from?.pathname || '/dashboard';
   const applyScheme = location.state?.applyScheme || null;
