@@ -1,0 +1,31 @@
+{
+  "name": "bharatseva-workspace",
+  "version": "1.0.0",
+  "description": "BharatSeva AI — Multilingual Citizen Welfare Scheme Platform",
+  "private": true,
+  "scripts": {
+    "server": "cd backend && npm run dev",
+    "start": "cd backend && npm start",
+    "dev": "cd backend && npm run dev",
+    "dev:frontend": "cd frontend && npm run dev",
+    "dev:backend": "cd backend && npm run dev",
+    "build:frontend": "cd frontend && npm run build",
+    "test:backend": "cd backend && npm test",
+    "docker:dev": "docker compose up --build",
+    "docker:dev:down": "docker compose down",
+    "docker:prod": "docker compose -f docker-compose.prod.yml up --build -d",
+    "docker:prod:down": "docker compose -f docker-compose.prod.yml down",
+    "install:all": "cd backend && npm install && cd ../frontend && npm install"
+  },
+  "keywords": [
+    "bharatseva",
+    "welfare",
+    "ai",
+    "sarvam",
+    "india",
+    "government-schemes",
+    "multilingual"
+  ],
+  "author": "BharatSeva AI Team",
+  "license": "ISC"
+}

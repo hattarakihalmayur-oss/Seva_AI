@@ -1,0 +1,38 @@
+{
+  "name": "bharatseva-backend",
+  "version": "1.0.0",
+  "description": "Backend API for BharatSeva AI platform — Production-Ready Phase 5",
+  "main": "src/server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node src/server.js",
+    "server": "node src/server.js",
+    "dev": "node --watch src/server.js",
+    "dev:server": "node --watch src/server.js",
+    "free-port": "powershell -Command \"$conns = Get-NetTCPConnection -LocalPort 5000 -ErrorAction SilentlyContinue; if ($conns) { $conns | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force -ErrorAction SilentlyContinue } }\"",
+    "test": "node --test --test-concurrency=1 src/tests/*.test.js"
+  },
+  "keywords": [
+    "bharatseva",
+    "government-schemes",
+    "welfare",
+    "ai",
+    "express"
+  ],
+  "author": "BharatSeva AI Team",
+  "license": "ISC",
+  "dependencies": {
+    "bcryptjs": "^3.0.2",
+    "compression": "^1.7.4",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "express-rate-limit": "^7.5.0",
+    "helmet": "^8.0.0",
+    "hpp": "^0.2.3",
+    "jsonwebtoken": "^9.0.2",
+    "mongoose": "^8.9.5",
+    "morgan": "^1.10.0"
+  }
+}

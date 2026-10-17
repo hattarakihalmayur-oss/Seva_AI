@@ -1,0 +1,97 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# BharatSeva AI — Docker Compose (Development)
+#
+# Orchestrates: MongoDB, Backend (Node/Express), Frontend (Vite dev server)
+#
+# Usage:
+#   docker compose up
+#
+# For production, see docker-compose.prod.yml
+# ─────────────────────────────────────────────────────────────────────────────
+
+version: '3.9'
+
+services:
+
+  # ── MongoDB ──────────────────────────────────────────────────────────────────
+  mongodb:
+    image: mongo:7
+    container_name: bharatseva_mongo
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+    environment:
+      MONGO_INITDB_DATABASE: bharatseva
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 20s
+    networks:
+      - bharatseva_network
+
+  # ── Backend (Express API) ─────────────────────────────────────────────────
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      target: builder  # Use builder stage in dev to include dev deps
+    container_name: bharatseva_backend
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    environment:
+      NODE_ENV: development
+      PORT: 5000
+      MONGODB_URI: mongodb://mongodb:27017/bharatseva
+      JWT_SECRET: ${JWT_SECRET:-dev_bharatseva_jwt_secret_key_32_characters_minimum}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-7d}
+      SARVAM_API_KEY: ${SARVAM_API_KEY:-}
+      FRONTEND_URL: http://localhost:3000
+      CORS_ORIGINS: http://localhost:3000,http://frontend:3000
+    volumes:
+      - ./backend/src:/app/src:ro  # Hot-reload source code
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:5000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+    networks:
+      - bharatseva_network
+
+  # ── Frontend (Vite dev server) ─────────────────────────────────────────────
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      target: builder  # Use builder stage for dev
+    container_name: bharatseva_frontend
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      VITE_API_BASE_URL: http://localhost:5000/api
+    volumes:
+      - ./frontend/src:/app/src:ro  # Hot-reload source code
+    depends_on:
+      - backend
+    networks:
+      - bharatseva_network
+    command: npm run dev -- --host 0.0.0.0
+
+# ── Persistent Volumes ────────────────────────────────────────────────────────
+volumes:
+  mongodb_data:
+    driver: local
+
+# ── Networks ──────────────────────────────────────────────────────────────────
+networks:
+  bharatseva_network:
+    driver: bridge
