@@ -54,8 +54,20 @@ function validateAndLoadConfig() {
   const jwtSecret = process.env.JWT_SECRET;
   const jwtExpiresIn = process.env.JWT_EXPIRES_IN || '7d';
   const sarvamApiKey = process.env.SARVAM_API_KEY;
-  const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
-  const corsOriginsRaw = process.env.CORS_ORIGINS || 'http://localhost:3000';
+
+  // Render automatically injects RENDER_EXTERNAL_URL (e.g., https://seva-ai-backend.onrender.com)
+  const backendUrl = (
+    process.env.BACKEND_URL ||
+    process.env.RENDER_EXTERNAL_URL ||
+    `http://localhost:${port}`
+  ).replace(/\/+$/, '');
+
+  const frontendUrl = (
+    process.env.FRONTEND_URL ||
+    'http://localhost:3000'
+  ).replace(/\/+$/, '');
+
+  const corsOriginsRaw = process.env.CORS_ORIGINS || '';
 
   const errors = [];
 
@@ -76,10 +88,23 @@ function validateAndLoadConfig() {
   }
 
   // Parse CORS origins
-  const corsOrigins = corsOriginsRaw
+  const parsedOrigins = corsOriginsRaw
     .split(',')
-    .map((origin) => origin.trim())
+    .map((origin) => origin.trim().replace(/\/+$/, ''))
     .filter(Boolean);
+
+  // Always automatically include FRONTEND_URL and localhost in CORS allowlist
+  if (frontendUrl && !parsedOrigins.includes(frontendUrl)) {
+    parsedOrigins.push(frontendUrl);
+  }
+  if (!parsedOrigins.includes('http://localhost:3000')) {
+    parsedOrigins.push('http://localhost:3000');
+  }
+  if (!parsedOrigins.includes('http://127.0.0.1:3000')) {
+    parsedOrigins.push('http://127.0.0.1:3000');
+  }
+
+  const corsOrigins = parsedOrigins;
 
   if (errors.length > 0) {
     const errorMessage = `[BharatSeva Backend Startup Error] Environment configuration invalid:\n- ${errors.join('\n- ')}`;
@@ -98,14 +123,16 @@ function validateAndLoadConfig() {
     JWT_SECRET: jwtSecret || 'dev_temporary_bharatseva_secret_key_32chars',
     JWT_EXPIRES_IN: jwtExpiresIn,
     SARVAM_API_KEY: sarvamApiKey || '',
+    BACKEND_URL: backendUrl,
     FRONTEND_URL: frontendUrl,
-    CORS_ORIGINS: corsOrigins.length > 0 ? corsOrigins : ['http://localhost:3000'],
+    CORS_ORIGINS: corsOrigins,
     RATE_LIMIT_WINDOW_MS: parseInt(process.env.RATE_LIMIT_WINDOW_MS, 10) || 15 * 60 * 1000,
+    RATE_LIMIT_MAX_REQUESTS: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS, 10) || 100,
     // DigiLocker / MeriPehchaan OAuth 2.0
     DIGILOCKER_CLIENT_ID: process.env.DIGILOCKER_CLIENT_ID || '',
     DIGILOCKER_CLIENT_SECRET: process.env.DIGILOCKER_CLIENT_SECRET || '',
     DIGILOCKER_REDIRECT_URI:
-      process.env.DIGILOCKER_REDIRECT_URI || `${frontendUrl.replace(':3000', ':5000')}/api/digilocker/callback`,
+      process.env.DIGILOCKER_REDIRECT_URI || `${backendUrl}/api/digilocker/callback`,
     DIGILOCKER_AUTH_URL:
       process.env.DIGILOCKER_AUTH_URL || 'https://digilocker.meripehchaan.gov.in/public/oauth2/1/authorize',
     DIGILOCKER_TOKEN_URL:
@@ -133,6 +160,7 @@ export function getSafeConfigSummary() {
   return {
     nodeEnv: envConfig.NODE_ENV,
     port: envConfig.PORT,
+    backendUrl: envConfig.BACKEND_URL,
     frontendUrl: envConfig.FRONTEND_URL,
     allowedCorsOrigins: envConfig.CORS_ORIGINS,
     databaseConfigured: Boolean(envConfig.MONGODB_URI),
@@ -143,3 +171,4 @@ export function getSafeConfigSummary() {
 }
 
 export default envConfig;
+

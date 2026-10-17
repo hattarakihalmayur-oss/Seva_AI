@@ -61,7 +61,9 @@ async function startServer() {
         setTimeout(() => {
           server.listen(envConfig.PORT, () => {
             logger.info(`🚀 BharatSeva AI Backend running on port ${envConfig.PORT}`);
-            logger.info(`📍 Health Check: http://localhost:${envConfig.PORT}/api/health`);
+            logger.info(`🔗 Backend URL: ${envConfig.BACKEND_URL}`);
+            logger.info(`🌐 Linked Frontend: ${envConfig.FRONTEND_URL}`);
+            logger.info(`📍 Health Check: ${envConfig.BACKEND_URL}/api/health`);
           });
         }, 500);
         return;
@@ -72,8 +74,10 @@ async function startServer() {
 
     server.listen(envConfig.PORT, () => {
       logger.info(`🚀 BharatSeva AI Backend running on port ${envConfig.PORT}`);
-      logger.info(`📍 Health Check: http://localhost:${envConfig.PORT}/api/health`);
-      logger.info(`🌐 Allowed CORS Origins: ${envConfig.CORS_ORIGINS.join(', ')}`);
+      logger.info(`🔗 Backend URL: ${envConfig.BACKEND_URL}`);
+      logger.info(`🌐 Linked Frontend: ${envConfig.FRONTEND_URL}`);
+      logger.info(`📍 Health Check: ${envConfig.BACKEND_URL}/api/health`);
+      logger.info(`🛡️ Allowed CORS Origins: ${envConfig.CORS_ORIGINS.join(', ')}`);
     });
 
   } catch (error) {

@@ -6,6 +6,9 @@ import rateLimit from 'express-rate-limit';
 import compression from 'compression';
 import cookieParser from 'cookie-parser';
 import hpp from 'hpp';
+import path from 'path';
+import fs from 'fs';
+import { fileURLToPath } from 'url';
 
 import envConfig from './config/env.js';
 import apiRoutes from './routes/index.js';
@@ -62,9 +65,18 @@ const corsOptions = {
   origin: (origin, callback) => {
     // Allow requests with no origin (mobile apps, curl, server-to-server)
     if (!origin) return callback(null, true);
-    const isAllowed = envConfig.CORS_ORIGINS.some(
-      (allowedOrigin) => allowedOrigin === origin || allowedOrigin === '*'
-    );
+    const isAllowed =
+      envConfig.CORS_ORIGINS.some(
+        (allowedOrigin) =>
+          allowedOrigin === origin ||
+          allowedOrigin === '*' ||
+          allowedOrigin.replace(/\/+$/, '') === origin.replace(/\/+$/, '')
+      ) ||
+      origin.endsWith('.onrender.com') ||
+      origin.endsWith('.vercel.app') ||
+      origin.includes('localhost') ||
+      origin.includes('127.0.0.1');
+
     if (isAllowed) {
       callback(null, true);
     } else {
@@ -129,16 +141,31 @@ if (envConfig.isDevelopment) {
 // ──────────────────────────────────────────────────────────────────────────────
 app.use('/api', apiRoutes);
 
-// Root health redirect
-app.get('/', (req, res) => {
-  res.json({
-    service: 'BharatSeva AI API',
-    status: 'online',
-    phase: 'Phase 5 - Production-Ready',
-    apiHealthEndpoint: '/api/health',
-    apiDocsEndpoint: '/api',
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const frontendDistPath = path.resolve(__dirname, '../../frontend/dist');
+
+// Serve built frontend if available (e.g. single-service full-stack Render deployment)
+if (fs.existsSync(frontendDistPath)) {
+  app.use(express.static(frontendDistPath));
+  app.get('*', (req, res, next) => {
+    if (req.path.startsWith('/api')) return next();
+    res.sendFile(path.join(frontendDistPath, 'index.html'));
   });
-});
+} else {
+  // Root status endpoint for standalone API service (e.g. separate Render Web Service)
+  app.get('/', (req, res) => {
+    res.json({
+      service: 'BharatSeva AI API',
+      status: 'online',
+      version: '1.0.0',
+      backendUrl: envConfig.BACKEND_URL,
+      frontendUrl: envConfig.FRONTEND_URL,
+      apiHealthEndpoint: `${envConfig.BACKEND_URL}/api/health`,
+      corsOrigins: envConfig.CORS_ORIGINS,
+    });
+  });
+}
 
 // ──────────────────────────────────────────────────────────────────────────────
 // 11. ERROR HANDLERS — order matters; 404 first, then centralized error handler

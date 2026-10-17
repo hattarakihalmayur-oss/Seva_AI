@@ -1,0 +1,63 @@
+# ──────────────────────────────────────────────────────────────────────────────
+# Render Infrastructure Blueprint for BharatSeva AI (Seva_AI)
+# https://render.com/docs/blueprint-spec
+# ──────────────────────────────────────────────────────────────────────────────
+# To deploy with 1-click:
+# 1. Open Render Dashboard (https://dashboard.render.com/blueprints)
+# 2. Click "New Blueprint Instance" and link your GitHub repository:
+#    https://github.com/hattarakihalmayur-oss/Seva_AI.git
+# 3. Supply your MONGODB_URI (and optional SARVAM_API_KEY)
+# 4. Click "Apply" — Render builds and deploys both services automatically!
+# ──────────────────────────────────────────────────────────────────────────────
+
+services:
+  # ── 1. Backend Web Service ──────────────────────────────────────────────────
+  - type: web
+    name: seva-ai-backend
+    env: node
+    plan: free
+    rootDir: backend
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: MONGODB_URI
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: SARVAM_API_KEY
+        sync: false
+      - key: FRONTEND_URL
+        fromService:
+          type: web
+          name: seva-ai-frontend
+          property: host
+      - key: CORS_ORIGINS
+        value: "*"
+
+  # ── 2. Frontend Static Site ─────────────────────────────────────────────────
+  - type: web
+    name: seva-ai-frontend
+    env: static
+    plan: free
+    rootDir: frontend
+    buildCommand: npm install && npm run build
+    staticPublishPath: dist
+    pullRequestPreviewsEnabled: true
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    envVars:
+      - key: VITE_API_BASE_URL
+        fromService:
+          type: web
+          name: seva-ai-backend
+          property: host
+      - key: VITE_APP_NAME
+        value: BharatSeva AI

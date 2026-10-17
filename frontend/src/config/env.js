@@ -1,32 +1,39 @@
 /**
  * Centralized Frontend Environment Configuration
  * 
- * NOTE FOR DEVELOPERS & DEPLOYMENT:
- * - Vite embeds all variables prefixed with `VITE_` into client-side JS at BUILD TIME.
- * - These variables are completely visible to end users in browser dev tools.
- * - NEVER include server secrets, JWT secret keys, Sarvam API keys, or database credentials here.
- * - In production, VITE_API_BASE_URL must be supplied prior to or during `npm run build`.
+ * Automatically resolves the backend API URL across:
+ * - VITE_API_BASE_URL (standard)
+ * - VITE_API_URL (common shortcut)
+ * - VITE_BACKEND_URL (Render service link)
+ * - Local fallback (http://localhost:5000/api) or relative (/api)
  */
 
-const rawApiBaseUrl = import.meta.env.VITE_API_BASE_URL;
+function resolveApiBaseUrl() {
+  const envVal =
+    import.meta.env.VITE_API_BASE_URL ||
+    import.meta.env.VITE_API_URL ||
+    import.meta.env.VITE_BACKEND_URL;
 
-// Validation check
-export const validateFrontendEnv = () => {
-  const errors = [];
-
-  if (!rawApiBaseUrl || typeof rawApiBaseUrl !== 'string' || !rawApiBaseUrl.trim()) {
-    errors.push('VITE_API_BASE_URL is missing or empty. Please set it in frontend/.env or your deployment environment.');
-  } else {
-    try {
-      // Validate that it looks like a valid URL or relative path
-      if (!rawApiBaseUrl.startsWith('/') && !rawApiBaseUrl.startsWith('http://') && !rawApiBaseUrl.startsWith('https://')) {
-        errors.push(`VITE_API_BASE_URL ("${rawApiBaseUrl}") must be an absolute URL (http:// or https://) or a relative path starting with /.`);
-      }
-    } catch (e) {
-      errors.push(`Invalid VITE_API_BASE_URL: ${e.message}`);
+  if (envVal && typeof envVal === 'string' && envVal.trim()) {
+    let clean = envVal.trim().replace(/\/+$/, '');
+    // If user provided origin only (e.g. https://my-backend.onrender.com), append /api
+    if (!clean.endsWith('/api') && (clean.startsWith('http://') || clean.startsWith('https://'))) {
+      clean += '/api';
     }
+    return clean;
   }
 
+  // Sensible default: proxy /api in dev or relative /api in production
+  return import.meta.env.DEV ? 'http://localhost:5000/api' : '/api';
+}
+
+const resolvedApiBaseUrl = resolveApiBaseUrl();
+
+export const validateFrontendEnv = () => {
+  const errors = [];
+  if (!resolvedApiBaseUrl) {
+    errors.push('Unable to resolve backend API URL. Please set VITE_API_BASE_URL in your deployment environment.');
+  }
   return {
     isValid: errors.length === 0,
     errors,
@@ -35,11 +42,8 @@ export const validateFrontendEnv = () => {
 
 const validation = validateFrontendEnv();
 
-// Cleaned up base URL (strip trailing slashes)
-const cleanApiBaseUrl = rawApiBaseUrl ? rawApiBaseUrl.trim().replace(/\/+$/, '') : '';
-
 export const config = Object.freeze({
-  apiBaseUrl: cleanApiBaseUrl,
+  apiBaseUrl: resolvedApiBaseUrl,
   appName: import.meta.env.VITE_APP_NAME || 'BharatSeva AI',
   appVersion: import.meta.env.VITE_APP_VERSION || '1.0.0',
   isDev: import.meta.env.DEV,
@@ -48,3 +52,4 @@ export const config = Object.freeze({
 });
 
 export default config;
+
