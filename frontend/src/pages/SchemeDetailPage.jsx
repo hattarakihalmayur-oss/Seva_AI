@@ -44,15 +44,20 @@ export default function SchemeDetailPage() {
 
     fetchSchemeDetails(id)
       .then((res) => {
-        if (isMounted && res?.data) {
-          setRawScheme(res.data);
-          evaluateSchemeEligibility(res.data.slug, user || {})
-            .then((evalRes) => {
-              if (isMounted && evalRes?.data) {
-                setAssessment(evalRes.data);
-              }
-            })
-            .catch(() => {});
+        if (isMounted) {
+          if (res?.data) {
+            setRawScheme(res.data);
+            evaluateSchemeEligibility(res.data.slug, user || {})
+              .then((evalRes) => {
+                if (isMounted && evalRes?.data) {
+                  setAssessment(evalRes.data);
+                }
+              })
+              .catch(() => {});
+          } else {
+            const fallback = MOCK_SCHEMES.find((s) => s.id === id || s.slug === id);
+            setRawScheme(fallback);
+          }
         }
       })
       .catch(() => {
@@ -61,6 +66,7 @@ export default function SchemeDetailPage() {
           setRawScheme(fallback);
         }
       })
+
       .finally(() => {
         if (isMounted) setLoading(false);
       });

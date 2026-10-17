@@ -31,7 +31,57 @@ export default function SchemeSearchPage() {
   const [loading, setLoading] = useState(true);
   const [isNewlyDiscovered, setIsNewlyDiscovered] = useState(false);
 
-  // Fetch schemes from API
+  // Robust client-side filter helper that works even when API is cold-starting or offline
+  const filterDataset = (dataset, query, type, sector, state, assessment) => {
+    return dataset.filter((scheme) => {
+      // 1. Text Search matching across all relevant fields
+      if (query && query.trim()) {
+        const q = query.trim().toLowerCase();
+        const matchesName = scheme.name?.toLowerCase().includes(q);
+        const matchesShort = scheme.shortName?.toLowerCase().includes(q);
+        const matchesDesc = scheme.description?.toLowerCase().includes(q);
+        const matchesAuthority = scheme.authority?.toLowerCase().includes(q);
+        const matchesSector = scheme.sector?.toLowerCase().includes(q);
+        const matchesState = scheme.state?.toLowerCase().includes(q);
+        const matchesBeneficiary = Array.isArray(scheme.targetBeneficiaries) &&
+          scheme.targetBeneficiaries.some((b) => b?.toLowerCase().includes(q));
+        const matchesTags = Array.isArray(scheme.tags) &&
+          scheme.tags.some((t) => t?.toLowerCase().includes(q));
+
+        if (!matchesName && !matchesShort && !matchesDesc && !matchesAuthority && !matchesSector && !matchesState && !matchesBeneficiary && !matchesTags) {
+          return false;
+        }
+      }
+
+      // 2. Type Filter (Central / State)
+      if (type !== 'All' && scheme.type !== type) {
+        return false;
+      }
+
+      // 3. Sector Filter
+      if (sector !== 'All' && scheme.sector !== sector) {
+        return false;
+      }
+
+      // 4. State Filter
+      if (state !== 'All') {
+        if (state === 'All India') {
+          if (scheme.state !== 'All India') return false;
+        } else {
+          if (scheme.state !== 'All India' && scheme.state !== state) return false;
+        }
+      }
+
+      // 5. Assessment Category
+      if (assessment !== 'All' && scheme.assessmentCategory !== assessment) {
+        return false;
+      }
+
+      return true;
+    });
+  };
+
+  // Fetch schemes from API with instant resilient fallback
   const loadSchemes = async () => {
     setLoading(true);
     setIsNewlyDiscovered(false);
@@ -44,21 +94,25 @@ export default function SchemeSearchPage() {
       if (selectedAssessment !== 'All') params.assessmentCategory = selectedAssessment;
 
       const response = await fetchSchemes(params);
-      if (response?.data && response.data.length > 0) {
+      if (response?.data && Array.isArray(response.data) && response.data.length > 0) {
         setSchemes(response.data);
         if (response.newlyDiscovered || response.data.some((s) => s.autoDiscovered)) {
           setIsNewlyDiscovered(true);
         }
       } else {
-        setSchemes([]);
+        // Fallback to client dataset with active filters applied
+        const clientFiltered = filterDataset(MOCK_SCHEMES, searchTerm, selectedType, selectedSector, selectedState, selectedAssessment);
+        setSchemes(clientFiltered);
       }
     } catch {
-      // Graceful fallback to client dataset if server offline
-      setSchemes(MOCK_SCHEMES);
+      // Graceful fallback to client dataset with active filters applied
+      const clientFiltered = filterDataset(MOCK_SCHEMES, searchTerm, selectedType, selectedSector, selectedState, selectedAssessment);
+      setSchemes(clientFiltered);
     } finally {
       setLoading(false);
     }
   };
+
 
   useEffect(() => {
     loadSchemes();

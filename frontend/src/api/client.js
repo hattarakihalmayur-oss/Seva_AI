@@ -38,13 +38,27 @@ apiClient.interceptors.request.use(
   }
 );
 
-// Response Interceptor: Standardize error formatting
+// Response Interceptor: Standardize error formatting and intercept static HTML fallbacks
 apiClient.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    // If backend returns HTML (e.g. static site index.html rewrite because of bad URL or cold start), reject
+    if (
+      typeof response.data === 'string' &&
+      (response.data.includes('<!doctype html>') ||
+        response.data.includes('<html') ||
+        response.data.includes('window.__vite_plugin_react_preamble_installed__'))
+    ) {
+      const htmlErr = new Error('API server returned HTML instead of JSON. Backend service may be starting up or URL misconfigured.');
+      htmlErr.isHtmlFallback = true;
+      htmlErr.status = 503;
+      return Promise.reject(htmlErr);
+    }
+    return response;
+  },
   (error) => {
     const formattedError = {
       message: error.response?.data?.message || error.message || 'An unexpected network error occurred.',
-      status: error.response?.status || 500,
+      status: error.response?.status || error.status || 500,
       code: error.code,
       data: error.response?.data || null,
       isNetworkError: !error.response,
@@ -52,5 +66,6 @@ apiClient.interceptors.response.use(
     return Promise.reject(formattedError);
   }
 );
+
 
 export default apiClient;
